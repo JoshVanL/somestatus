@@ -29,6 +29,13 @@ func Run(ctx context.Context, log logr.Logger, s *string, event chan<- struct{})
 		go func() { event <- struct{}{} }()
 	}
 
+	// Allow for internet to come up
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-time.After(time.Second * 5):
+	}
+
 	for {
 		update()
 		select {
