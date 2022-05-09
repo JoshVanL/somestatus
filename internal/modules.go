@@ -2,7 +2,9 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -74,13 +76,17 @@ func Run(ctx context.Context, log logr.Logger, path string) error {
 
 	log.Info("all modules running ...")
 
-	var err error
+	var errs []string
+	var lock sync.Mutex
 	func() {
 		for {
 			select {
-			case err = <-h.errCh:
+			case err := <-h.errCh:
 				log.Error(err, "recived module error, shutting down ...")
+				lock.Lock()
+				defer lock.Unlock()
 				cancel()
+				errs = append(errs, err.Error())
 				return
 			case <-ctx.Done():
 				log.Info("shutting down ...")
@@ -93,8 +99,12 @@ func Run(ctx context.Context, log logr.Logger, path string) error {
 		}
 	}()
 
-	h.wg.Done()
-	return err
+	h.wg.Wait()
+	if len(errs) > 0 {
+		return errors.New(strings.Join(errs, ", "))
+	}
+
+	return nil
 }
 
 func (h *handler) update() error {
