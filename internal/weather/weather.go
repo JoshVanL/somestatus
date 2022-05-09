@@ -14,7 +14,7 @@ func Run(ctx context.Context, log logr.Logger, s *string, event chan<- struct{})
 	log = log.WithName("weather")
 
 	update := func() {
-		resp, err := http.Get("http://wttr.in/London?format=1")
+		resp, err := http.Get("http://wttr.in/?format=%c%t%20%w")
 		if err != nil {
 			log.Error(err, "failed to get weather report")
 			return
@@ -25,7 +25,7 @@ func Run(ctx context.Context, log logr.Logger, s *string, event chan<- struct{})
 			return
 		}
 
-		*s = strings.TrimSpace(string(body))
+		*s = strings.TrimSpace(strings.ReplaceAll(string(body), "  ", " "))
 		go func() { event <- struct{}{} }()
 	}
 
@@ -33,7 +33,7 @@ func Run(ctx context.Context, log logr.Logger, s *string, event chan<- struct{})
 	select {
 	case <-ctx.Done():
 		return nil
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * 10):
 	}
 
 	for {
