@@ -62,7 +62,7 @@ func updateVolume(conn *pulse.Conn) (string, error) {
 	lastSink := sinks[len(sinks)-1]
 
 	if lastSink.Muted {
-		return "x", nil
+		return " x", nil
 	}
 
 	vol := math.Round(100 * float64(lastSink.CurrentVolumeStep) / (100000 / 1.53))
