@@ -14,7 +14,7 @@ func Run(ctx context.Context, log logr.Logger, s *string, event chan<- struct{})
 	log = log.WithName("weather")
 
 	update := func() {
-		resp, err := http.Get("http://wttr.in/?format=%c%t%20%w")
+		resp, err := http.Get("https://wttr.in/?format=%c%t%20%w")
 		if err != nil {
 			log.Error(err, "failed to get weather report")
 			return
