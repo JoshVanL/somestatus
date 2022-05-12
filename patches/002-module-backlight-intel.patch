@@ -60,7 +60,7 @@ index 0000000..f1bcf5c
 +		return err
 +	}
 +
-+	currB, err := os.ReadFile(maxBFile)
++	currB, err := os.ReadFile(bFile)
 +	if err != nil {
 +		return err
 +	}
