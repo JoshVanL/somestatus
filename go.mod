@@ -6,6 +6,7 @@ require (
 	github.com/auroralaboratories/pulse v1.0.1
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/stdr v1.2.2
+	github.com/howeyc/fsnotify v0.9.0
 	github.com/mickep76/netlink v0.0.0-20171228224349-516f7a6408d4
 	github.com/shirou/gopsutil v3.21.11+incompatible
 )

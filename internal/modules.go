@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+
 	"github.com/joshvanl/somestatus/internal/cpu"
 	"github.com/joshvanl/somestatus/internal/datetime"
 	"github.com/joshvanl/somestatus/internal/disk"
@@ -15,6 +16,7 @@ import (
 	"github.com/joshvanl/somestatus/internal/net"
 	"github.com/joshvanl/somestatus/internal/pipewire"
 	"github.com/joshvanl/somestatus/internal/temp"
+	"github.com/joshvanl/somestatus/internal/util"
 	"github.com/joshvanl/somestatus/internal/weather"
 )
 
@@ -73,6 +75,12 @@ func Run(ctx context.Context, log logr.Logger, path string) error {
 		}
 		h.blocks = append(h.blocks, block)
 	}
+
+	h.wg.Add(1)
+	go func() {
+		defer h.wg.Done()
+		util.RunWatcher(ctx, log)
+	}()
 
 	log.Info("all modules running ...")
 
