@@ -1,0 +1,97 @@
+diff --git a/internal/backlight/backlight.go b/internal/backlight/backlight.go
+new file mode 100644
+index 0000000..f1bcf5c
+--- /dev/null
++++ b/internal/backlight/backlight.go
+@@ -0,0 +1,69 @@
++package backlight
++
++import (
++	"context"
++	"fmt"
++	"os"
++	"strconv"
++	"strings"
++
++	"github.com/go-logr/logr"
++
++	"github.com/joshvanl/somestatus/internal/util"
++)
++
++const (
++	maxBFile = "/sys/class/backlight/intel_backlight/max_brightness"
++	bFile    = "/sys/class/backlight/intel_backlight/brightness"
++)
++
++func Run(ctx context.Context, log logr.Logger, s *string, event chan<- struct{}) error {
++	log = log.WithName("backlight")
++
++	ch, err := util.AddWatcher(ctx, log, bFile)
++	if err != nil {
++		return err
++	}
++
++	if err := update(s); err != nil {
++		return err
++	}
++
++	for {
++		select {
++		case <-ctx.Done():
++			return nil
++		case <-ch:
++			if err := update(s); err != nil {
++				log.Error(err, "failed to get backlight status")
++				continue
++			}
++			go func() { event <- struct{}{} }()
++		}
++	}
++}
++
++func update(s *string) error {
++	maxB, err := os.ReadFile(maxBFile)
++	if err != nil {
++		return err
++	}
++
++	max, err := strconv.ParseFloat(strings.TrimSpace(string(maxB)), 64)
++	if err != nil {
++		return err
++	}
++
++	currB, err := os.ReadFile(maxBFile)
++	if err != nil {
++		return err
++	}
++
++	curr, err := strconv.ParseFloat(strings.TrimSpace(string(currB)), 64)
++	if err != nil {
++		return err
++	}
++
++	*s = fmt.Sprintf(" %.0f%%", curr*100/max)
++	return nil
++}
+diff --git a/internal/modules.go b/internal/modules.go
+index 969e4ce..b9fdbb0 100644
+--- a/internal/modules.go
++++ b/internal/modules.go
+@@ -9,6 +9,7 @@ import (
+ 
+ 	"github.com/go-logr/logr"
+ 
++	"github.com/joshvanl/somestatus/internal/backlight"
+ 	"github.com/joshvanl/somestatus/internal/battery"
+ 	"github.com/joshvanl/somestatus/internal/cpu"
+ 	"github.com/joshvanl/somestatus/internal/datetime"
+@@ -43,6 +44,9 @@ var allModules = [][]runModuleFn{
+ 	[]runModuleFn{
+ 		temp.Run,
+ 	},
++	[]runModuleFn{
++		backlight.Run,
++	},
+ 	[]runModuleFn{
+ 		battery.Run,
+ 	},
