@@ -1,0 +1,133 @@
+diff --git a/internal/battery/battery.go b/internal/battery/battery.go
+new file mode 100644
+index 0000000..4bfe454
+--- /dev/null
++++ b/internal/battery/battery.go
+@@ -0,0 +1,105 @@
++package battery
++
++import (
++	"bytes"
++	"context"
++	"fmt"
++	"os"
++	"path/filepath"
++	"strconv"
++	"time"
++
++	"github.com/go-logr/logr"
++)
++
++const (
++	path        = "/sys/class/power_supply"
++	batteryName = "BAT0"
++)
++
++var (
++	capPath  = filepath.Join(path, batteryName, "capacity")
++	statPath = filepath.Join(path, batteryName, "status")
++)
++
++func Run(ctx context.Context, log logr.Logger, s *string, event chan<- struct{}) error {
++	log = log.WithName("battery")
++
++	if err := setBatteryString(s); err != nil {
++		return err
++	}
++	go func() { event <- struct{}{} }()
++
++	for {
++		select {
++		case <-ctx.Done():
++			return nil
++		case <-time.After(time.Second * 3):
++			if err := setBatteryString(s); err != nil {
++				log.Error(err, "failed to get battery status")
++				continue
++			}
++			go func() { event <- struct{}{} }()
++		}
++	}
++
++	return nil
++}
++
++func setBatteryString(s *string) error {
++	status, capacity, err := getFiles()
++	if err != nil {
++		return err
++	}
++
++	i, err := strconv.Atoi(string(capacity))
++	if err != nil {
++		return err
++	}
++
++	bat := getIcon(i)
++	var charging string
++	if bytes.Equal(status, []byte("Charging")) {
++		charging = " "
++	}
++
++	*s = fmt.Sprintf("%s%s %s%%", bat, charging, capacity)
++
++	return nil
++}
++
++func getFiles() (status, capacity []byte, err error) {
++	status, err = os.ReadFile(statPath)
++	if err != nil {
++		return nil, nil, err
++	}
++
++	capacity, err = os.ReadFile(capPath)
++	if err != nil {
++		return nil, nil, err
++	}
++
++	if bytes.Equal(bytes.TrimSpace(capacity), []byte("100")) {
++		status = []byte("full")
++	}
++
++	return bytes.TrimSpace(status), bytes.TrimSpace(capacity), nil
++}
++
++func getIcon(capacity int) string {
++	switch {
++	case capacity == 100:
++		return ""
++
++	case capacity > 75:
++		return ""
++
++	case capacity > 30:
++		return ""
++
++	case capacity >= 25:
++		return ""
++	}
++
++	return ""
++}
+diff --git a/internal/modules.go b/internal/modules.go
+index 290bab8..969e4ce 100644
+--- a/internal/modules.go
++++ b/internal/modules.go
+@@ -9,6 +9,7 @@ import (
+ 
+ 	"github.com/go-logr/logr"
+ 
++	"github.com/joshvanl/somestatus/internal/battery"
+ 	"github.com/joshvanl/somestatus/internal/cpu"
+ 	"github.com/joshvanl/somestatus/internal/datetime"
+ 	"github.com/joshvanl/somestatus/internal/disk"
+@@ -42,6 +43,9 @@ var allModules = [][]runModuleFn{
+ 	[]runModuleFn{
+ 		temp.Run,
+ 	},
++	[]runModuleFn{
++		battery.Run,
++	},
+ 	[]runModuleFn{
+ 		datetime.Run,
+ 	},
