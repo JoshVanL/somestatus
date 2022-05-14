@@ -56,7 +56,7 @@ func readWireless() (string, error) {
 		return "", err
 	}
 
-	lines := strings.Split(string(b), "\n")
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
 	if len(lines) < 3 {
 		return "", nil
 	}
